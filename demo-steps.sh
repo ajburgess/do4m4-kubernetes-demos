@@ -32,17 +32,17 @@ curl http://172.17.0.4:8000
 curl http://172.17.0.5:8000
 
 # Expose the application pods as single service, with one IP address (cluster-IP)
-kubectl expose deployment hello --port=8000
+kubectl expose deployment hello --name=hello-service --port=80 --target-port=8000
 
 # Review...
 kubectl get pods -o wide
 kubectl get services
 
 # Access hello service using its cluster IP -- MAY BE DIFFERENT!
-curl http://10.102.94.144:8000
+curl http://X.X.X.X
 
 # Look at the logs from the hello service (picks one pod)
-kubectl get logs deployment hello
+kubectl logs deployment/hello
 
 # Use STERN to combine logs from all pods in service
 stern hello
@@ -53,6 +53,9 @@ kubectl set image deployment/hello hello=hello:1.0.1
 # Check versions of image used for deployment
 kubectl get deployments -o wide
 
+# Access hello service using its cluster IP -- MAY BE DIFFERENT!
+curl http://X.X.X.X
+
 # View the rollout history
 kubectl rollout history deployment/hello
 
@@ -62,8 +65,40 @@ kubectl rollout history deployment/hello --revision=2
 # Roll back to earlier deployment
 kubectl rollout undo deployment/hello
 
-# UNRESOLVED ISSUE
-# How preserve logs from pods that have been removed? (scaling, new image, etc)
+# Access hello service using its cluster IP -- MAY BE DIFFERENT!
+curl http://X.X.X.X
+
+# Deploy the consumer web service (it calls the hello service using http://hello-service - see code)
+kubectl create deployment hello-consumer --image=hello-consumer:1.0.0
+
+# Create a cluster IP for the hello-consumer service
+kubectl expose deployment hello-consumer --name=hello-consumer-service --port=80 --target-port=8000
+
+# Access the consumer service (via cluster IP)
+kubectl get services
+curl http://X.X.X.X
+
+# Simulate the consumer being unable to call the hello service
+kubectl scale deployment hello --replicas=0
+# Should see reply from consumer saying couldn't contact hello service
+curl http://X.X.X.X
+
+# Make it work again
+kubectl scale deployment hello --replicas=3
+
+# Expose consumer service thorugh a (simulated) load balancer
+kubectl expose service hello-consumer-service --name=hello-service-lb --type=LoadBalancer --port=80 --target-port=80
+
+# Review...
+kubectl get services
+
+# Access the consumer service (via load balancer within cluster)
+curl http://X.X.X.X
+
+# Access consumer service (via port exposed to internet)
+# NB: Need to find out random port allocated, and open that port in AWS EC2 security group
+# Then access via EC2 public IP + this random port number
+curl http://X.X.X.X:PPPPP
 
 
 
