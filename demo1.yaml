@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello
+  namespace: default
+  labels:
+    app:  hello
+spec:
+  selector:
+    matchLabels:
+      app: hello
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app:  hello
+    spec:
+      containers:
+      - name:  hello
+        image:  hello:1.0.2
+        ports:
+        - containerPort:  8000
+        env:
+          - name: TARGET
+            value: Berlin
+          - name: LAUNCH_CODE
+            valueFrom:
+              secretKeyRef:
+                name: doomsday
+                key: launch-code
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-service
+  namespace: default
+spec:
+  selector:
+    app: hello
+  type: ClusterIP
+  ports:
+  - port: 80 
+    targetPort: 8000
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-consumer
+  namespace: default
+  labels:
+    app:  hello-consumer
+spec:
+  selector:
+    matchLabels:
+      app: hello-consumer
+  replicas: 3
+  template:
+    metadata:
+      labels:
+        app:  hello-consumer
+    spec:
+      containers:
+      - name:  hello-consumer
+        image:  hello-consumer:1.0.0
+        ports:
+        - containerPort:  8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-consumer-service
+  namespace: default
+spec:
+  selector:
+    app: hello-consumer
+  type: ClusterIP
+  ports:
+  - port: 80 
+    targetPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hello-consumer-service-lb
+  namespace: default
+spec:
+  selector:
+    app: hello-consumer
+  type: LoadBalancer
+  ports:
+  - port: 80
+    targetPort: 8000 
+
+

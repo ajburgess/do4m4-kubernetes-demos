@@ -13,6 +13,9 @@ kubectl get deployments -o wide
 # Find out about the pod(s)
 kubectl get pods -o wide
 
+# Find out extra detail about one specific thing
+kubectl describe pod hello_xyzxyzxyz
+
 # Find out about services
 kubectl get services -o wide
 
@@ -40,6 +43,10 @@ kubectl get services
 
 # Access hello service using its cluster IP -- MAY BE DIFFERENT!
 curl http://X.X.X.X
+
+# See what happens when one of the pods dies (process restarts)
+curl X.X.X.X/oops
+kubectl get pods
 
 # Look at the logs from the hello service (picks one pod)
 kubectl logs deployment/hello
@@ -100,7 +107,54 @@ curl http://X.X.X.X
 # Then access via EC2 public IP + this random port number
 curl http://X.X.X.X:PPPPP
 
+# ---------------------------------
+# Using YAML files
+# ---------------------------------
 
+# Create demo1.yaml file to spin up 1 x replica of hello service
+kubectl apply -f demo1.yaml
+kubectl get pods
+kubectl get deployments
+
+# Delete everything mentioned in config file
+kubectl delete -f demo1.yaml
+
+# Require 3 x replicas
+kubectl apply -f demo1.yaml
+kubectl get pods
+
+# Require a service for the hello deployment
+kubectl apply -f demo1.yaml
+kubectl get services
+
+# hello-consumer deployment + service + load balancer
+kubectl apply -f demo1.yaml
+kubectl get services -o wide
+
+# Access environment variables (without being set first)
+curl ${HELLO_SERVICE}/info
+
+# Set the environment variables for hello service
+curl ${HELLO_SERVICE}/info
+
+# Create a store for our secrets
+kubectl create secret generic doomsday --from-literal=launch-code=WXYZ-BOOM
+
+# Change config to use secret (see notes)
+# ...
+
+# See the secret being used
+curl ${HELLO_SERVICE}/info
+
+# Change the secret (delete it and re-add)
+kubectl delete secret doomsday
+kubectl create secret generic doomsday --from-literal=launch-code=AAAA-BBBB
+
+# Restart all pods in service, so see updated secret
+kubectl rollout restart deployment hello
+
+# See the updated secret being used
+curl ${HELLO_SERVICE}/info
 
 # Get rid of entire minikube cluster
 minikube delete
