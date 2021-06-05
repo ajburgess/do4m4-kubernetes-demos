@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name:  hello
-        image:  hello:1.0.0
+        image:  andrewjohnburgess/hello:1.0.0
         ports:
         - containerPort:  8000
         env:
@@ -94,7 +94,7 @@ spec:
     spec:
       containers:
       - name:  hello-consumer
-        image:  hello-consumer:1.0.0
+        image:  andrewjohnburgess/hello-consumer:1.0.0
         ports:
         - containerPort:  8000
 ---

@@ -5,7 +5,8 @@
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build-image": "docker build --build-arg VERSION=${npm_package_version} --tag hello:${npm_package_version} ."
+    "build-image": "docker build --build-arg VERSION=${npm_package_version} --tag hello:${npm_package_version} .",
+    "push-image": "docker tag hello:${npm_package_version} andrewjohnburgess/hello:${npm_package_version} && docker push andrewjohnburgess/hello:${npm_package_version}"
   },
   "author": "",
   "license": "ISC",
