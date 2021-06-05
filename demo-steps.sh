@@ -41,11 +41,14 @@ kubectl expose deployment hello --name=hello-service --port=80 --target-port=800
 kubectl get pods -o wide
 kubectl get services
 
-# Access hello service using its cluster IP -- MAY BE DIFFERENT!
-curl http://X.X.X.X
+# Easy way to set up a provide an alias for the cluster IP address
+export HELLO_SERVICE=$(kubectl get service hello-service -o jsonpath={.spec.clusterIP})
+
+# Access hello service using its cluster IP
+curl http://${HELLO_SERVICE}
 
 # See what happens when one of the pods dies (process restarts)
-curl X.X.X.X/oops
+curl http://${HELLO_SERVICE}/crash
 kubectl get pods
 
 # Look at the logs from the hello service (picks one pod)
@@ -60,8 +63,8 @@ kubectl set image deployment/hello hello=hello:1.0.1
 # Check versions of image used for deployment
 kubectl get deployments -o wide
 
-# Access hello service using its cluster IP -- MAY BE DIFFERENT!
-curl http://X.X.X.X
+# Access hello service using its cluster IP
+curl http://${HELLO_SERVICE}
 
 # View the rollout history
 kubectl rollout history deployment/hello
@@ -72,8 +75,8 @@ kubectl rollout history deployment/hello --revision=2
 # Roll back to earlier deployment
 kubectl rollout undo deployment/hello
 
-# Access hello service using its cluster IP -- MAY BE DIFFERENT!
-curl http://X.X.X.X
+# Access hello service using its cluster IP
+curl http://${HELLO_SERVICE}
 
 # Deploy the consumer web service (it calls the hello service using http://hello-service - see code)
 kubectl create deployment hello-consumer --image=hello-consumer:1.0.0
@@ -83,12 +86,14 @@ kubectl expose deployment hello-consumer --name=hello-consumer-service --port=80
 
 # Access the consumer service (via cluster IP)
 kubectl get services
-curl http://X.X.X.X
+export HELLO_CONSUMER_SERVICE=$(kubectl get service hello-consumer-service -o jsonpath={.spec.clusterIP})
+
+curl http://${HELLO_CONSUMER_SERVICE}
 
 # Simulate the consumer being unable to call the hello service
 kubectl scale deployment hello --replicas=0
 # Should see reply from consumer saying couldn't contact hello service
-curl http://X.X.X.X
+curl http://${HELLO_CONSUMER_SERVICE}
 
 # Make it work again
 kubectl scale deployment hello --replicas=3
@@ -100,12 +105,13 @@ kubectl expose service hello-consumer-service --name=hello-service-lb --type=Loa
 kubectl get services
 
 # Access the consumer service (via load balancer within cluster)
-curl http://X.X.X.X
+export HELLO_CONSUMER_SERVICE_LB=$(kubectl get service hello-consumer-service-lb -o jsonpath={.spec.clusterIP})
+curl http://${HELLO_CONSUMER_SERVICE_LB}
 
 # Access consumer service (via port exposed to internet)
 # NB: Need to find out random port allocated, and open that port in AWS EC2 security group
 # Then access via EC2 public IP + this random port number
-curl http://X.X.X.X:PPPPP
+curl http://localhost:PPPPP
 
 # ---------------------------------
 # Using YAML files
@@ -155,6 +161,52 @@ kubectl rollout restart deployment hello
 
 # See the updated secret being used
 curl ${HELLO_SERVICE}/info
+
+# Add config map files for development verses production
+# for "message" setting, and feed it via environment variable MESSAGE
+# Remember to also change the hello deployment definition to map setting to env
+kubectl apply -f settings.dev.yaml
+curl ${HELLO_SERVICE}/message
+kubectl apply -f settings.dev.yaml
+kubectl rollout restart deployment hello
+curl ${HELLO_SERVICE}/message
+
+# Add a file to the config map ("message-file") mapped to volume /app/data
+# Incorporate the volume /app/data into the hello deployment
+curl ${HELLO_SERVICE}/message2
+
+# Have a look inside a hello pod, to see the volume, files and environment variables
+kubectl exec deployment hello -it -- sh
+ls /app/data
+cat /app/data/message.txt
+echo "Extra line" >> /app/data/message.txt
+env | sort
+
+# Configure a liveness probe for the hello service (/live)
+# Make one of the pods returm 503 errors
+# Look at pod status / restarts
+# Look at the pod events
+curl http://${HELLO_SERVICE}/stall
+kubectl get pods
+kubectl describe pod hello_xyzxyzxyz
+
+# Configure a readiness probe for the hello service (/ready)
+# Make one of the pods become not ready (but still live) for a period
+# Look at pod status / restarts
+# Look at the pod events
+curl http://${HELLO_SERVICE}/busy/60
+kubectl get pods
+kubectl describe pod hello_xyzxyzxyz
+
+# Demonstrate problem can have if rapid liveness checks
+# But longer startup time (but which may be quick sometimes)
+# Use environment variable START_TIME to simulate long startup
+# Pod gets restarted before it finished loading
+# Use startup probe to get round this (/ready)
+# Look at pod status / restarts
+# Look at the pod events
+kubectl get pods
+kubectl describe pod hello_xyzxyzxyz
 
 # Get rid of entire minikube cluster
 minikube delete

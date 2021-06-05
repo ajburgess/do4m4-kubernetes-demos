@@ -17,17 +17,50 @@ spec:
     spec:
       containers:
       - name:  hello
-        image:  hello:1.0.2
+        image:  hello:1.0.11
         ports:
         - containerPort:  8000
         env:
-          - name: TARGET
-            value: Berlin
-          - name: LAUNCH_CODE
-            valueFrom:
-              secretKeyRef:
-                name: doomsday
-                key: launch-code
+        - name: STARTUP_TIME
+          value: "20"
+        - name: TARGET
+          value: Berlin
+        - name: LAUNCH_CODE
+          valueFrom:
+            secretKeyRef:
+              name: doomsday
+              key: launch-code
+        envFrom:
+        - configMapRef:
+            name: env
+        volumeMounts:
+        - mountPath: /app/data
+          name: app-data
+        startupProbe:
+          periodSeconds: 1
+          failureThreshold: 60
+          httpGet:
+            path: /ready
+            port: 8000
+        livenessProbe:
+          periodSeconds: 3
+          failureThreshold: 1
+          successThreshold: 1
+          httpGet:
+            path: /live
+            port: 8000
+        readinessProbe:
+          periodSeconds: 3
+          failureThreshold: 1
+          initialDelaySeconds: 3
+          successThreshold: 1
+          httpGet:
+            path: /ready
+            port: 8000          
+      volumes:
+      - name: app-data
+        configMap:
+          name: app-data
 ---
 apiVersion: v1
 kind: Service

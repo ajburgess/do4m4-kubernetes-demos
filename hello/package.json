@@ -1,11 +1,11 @@
 {
   "name": "hello",
-  "version": "1.0.2",
+  "version": "1.0.11",
   "description": "",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
-    "build-image": "docker build --tag hello:${npm_package_version} ."
+    "build-image": "docker build --build-arg VERSION=${npm_package_version} --tag hello:${npm_package_version} ."
   },
   "author": "",
   "license": "ISC",
