@@ -1,2 +1,5 @@
 .vscode/
 node_modules/
+/demo1.yaml
+/settings.*.yaml
+/stern

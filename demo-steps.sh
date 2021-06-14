@@ -4,7 +4,16 @@
 # Start minikube, in a way suitable for accessing from internet
 minikube start --vm-driver=none
 
-# Start the hello application (version 1.0.1) as a deployment (single pod)
+# Build the hello-app and hello-consumer-app images
+cd hello-app
+npm install
+npm run build-image
+cd hello-consumer-app
+npm install
+npm run build-image
+cd ..
+
+# Start the hello application (version 1.0.0) as a deployment (single pod)
 kubectl create deployment hello --image=hello:1.0.0
 
 # Find out about the deployment
@@ -57,6 +66,8 @@ kubectl logs deployment/hello
 # Use STERN to combine logs from all pods in service
 stern hello
 
+# Rebuild an image for hello:1.0.1 (by editing the package.json
+# file to change 'version' value, then doing npm run build-image)
 # Redeploy the newer version of the hello image (1.0.1)
 kubectl set image deployment/hello hello=hello:1.0.1
 
@@ -98,15 +109,15 @@ curl http://${HELLO_CONSUMER_SERVICE}
 # Make it work again
 kubectl scale deployment hello --replicas=3
 
-# Expose consumer service thorugh a (simulated) load balancer
-kubectl expose service hello-consumer-service --name=hello-service-lb --type=LoadBalancer --port=80 --target-port=80
+# Expose hello-consumer app through a (simulated) load balancer
+kubectl expose deployment hello-consumer --name=hello-consumer-lb --type=LoadBalancer --port=80 --target-port=8000
 
 # Review...
 kubectl get services
 
 # Access the consumer service (via load balancer within cluster)
-export HELLO_CONSUMER_SERVICE_LB=$(kubectl get service hello-consumer-service-lb -o jsonpath={.spec.clusterIP})
-curl http://${HELLO_CONSUMER_SERVICE_LB}
+export HELLO_CONSUMER_LB=$(kubectl get service hello-consumer-lb -o jsonpath={.spec.clusterIP})
+curl http://${HELLO_CONSUMER_LB}
 
 # Access consumer service (via port exposed to internet)
 # NB: Need to find out random port allocated, and open that port in AWS EC2 security group
